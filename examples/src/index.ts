@@ -1,5 +1,6 @@
 import { createSection } from './section';
 import { Text, Button, Dropdown } from '../../src';
+import tableExample from './table.js';
 
 const mainEl = document.querySelector('main');
 
@@ -80,3 +81,6 @@ dropdown2.on('change', ({ detail }) =>
   console.log(`The "${detail.value}" is selected.`)
 );
 dropdownSection.appendChild(dropdown2.render());
+
+// table
+tableExample(mainEl);
