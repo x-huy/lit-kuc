@@ -1,0 +1,23 @@
+{
+  "name": "lit-kuc",
+  "version": "0.0.1",
+  "description": "A prototype of kintone UI components built with lit-html",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "parcel examples/src/index.html --out-dir examples/dist --open",
+    "build": "parcel build src/index.ts --global litkuc --out-file lit-kuc",
+    "build-examples": "parcel build examples/src/index.html --out-dir examples/dist --public-url ./",
+    "publish-examples": "gh-pages -d examples/dist"
+  },
+  "keywords": [],
+  "author": "Nguyen Xuan Huy",
+  "license": "MIT",
+  "devDependencies": {
+    "gh-pages": "^2.0.1",
+    "parcel-bundler": "^1.12.3",
+    "typescript": "^3.4.5"
+  },
+  "dependencies": {
+    "lit-html": "^1.0.0"
+  }
+}
