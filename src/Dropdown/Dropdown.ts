@@ -1,60 +1,60 @@
-import { styleMap } from 'lit-html/directives/style-map';
-import { Component, html, classMap } from '../common';
-import itemTemplate from '../common/list-item-template';
-// import Message from '../constant/Message';
-import { handleItemClick } from '../common/selection-single';
+import { Component, BaseProps, Prop, State, html, classMap } from '../common';
+import { ListItem, handleSelect } from '../common/select-single';
 
 import './Dropdown.css';
 
-interface Item {
-  value: string | number;
-  label: string;
-  isDisabled?: boolean;
-}
-
-interface Props {
+export type DropDownProps = BaseProps & {
   value?: string | number;
-  items: Item[];
-  isVisible?: boolean;
-  isDisabled?: boolean;
-  isVisibleItems?: boolean;
-}
+  items?: ListItem[];
+};
 
-export default class Dropdown extends Component {
-  _showItems = () => {
-    this.setState({
-      isVisibleItems: true
-    });
+export default class Dropdown extends Component<DropDownProps> {
+  @Prop value: string | number;
+  @Prop items: ListItem[];
 
-    document.addEventListener('click', this._hideItems);
+  @State _menuVisible: boolean;
+
+  _handleToggleMenu = () => {
+    this._menuVisible = !this._menuVisible;
+    this._menuVisible
+      ? document.addEventListener('click', this._handleClickOutside)
+      : document.removeEventListener('click', this._handleClickOutside);
   };
 
-  _hideItems = evt => {
-    if (this.el.contains(evt.target)) {
-      return;
+  _handleClickOutside = (evt: MouseEvent) => {
+    let target = evt.target as HTMLElement;
+
+    if (!this.el.querySelector('.kuc-dropdown-outer').contains(target)) {
+      this._menuVisible = false;
     }
-
-    this.setState({ isVisibleItems: false });
-    document.removeEventListener('click', this._hideItems);
-
-    // TODO: fix to toggle the dropdown list
   };
 
-  _onChange = value => {
-    this.setState({ value, isVisibleItems: false });
+  _handleSelectItem = (value: string | number) => {
+    this.value = value;
+    this._menuVisible = false;
     this.trigger('change', { value });
   };
 
-  _getItemsStyle({ isVisibleItems, isDisabled }) {
-    const display =
-      isVisibleItems && !isDisabled
-        ? { display: 'block' }
-        : { display: 'none' };
-    return display;
+  _canShowMenu() {
+    const { _menuVisible, disabled, items } = this;
+    return (
+      _menuVisible && !disabled && Array.isArray(items) && items.length > 0
+    );
   }
 
-  template({ value, items, isVisible, isDisabled, isVisibleItems }: Props) {
-    if (isVisible === false) {
+  _getText(): string | number {
+    const { items, value } = this;
+    if (!Array.isArray(items)) {
+      return '';
+    }
+
+    const item = items.filter(item => item.value === value)[0];
+    return item ? item.value : '';
+  }
+
+  _render() {
+    const { items, visible, disabled } = this;
+    if (!visible) {
       return null;
     }
 
@@ -67,38 +67,21 @@ export default class Dropdown extends Component {
     //   throw new Error(Message.common.INVALID_ARGUMENT);
     // }
 
-    const renderItems = items => {
-      return items.map((item, i) => {
-        return itemTemplate({
-          selected: value === item.value,
-          onClick: item_prop => handleItemClick(item_prop, this._onChange),
-          item,
-          isDisabled: item.isDisabled
-        });
-      });
+    const text = this._getText();
+
+    const classes = {
+      'kuc-dropdown': true,
+      'kuc-dropdown-disable': disabled
     };
-
-    let index = -1;
-    items &&
-      items.forEach((item, i) => {
-        if (item.value === value) {
-          index = i;
-        }
-      });
-
-    const className = [
-      'kuc-dropdown',
-      isDisabled ? 'kuc-dropdown-disable' : ''
-    ];
 
     return html`
       <div class="kuc-dropdown-container">
         <div class="kuc-dropdown-sub-container">
-          <div class="kuc-dropdown-outer" @click=${this._showItems}>
-            <div class=${className.join(' ').trim()}>
+          <div class="kuc-dropdown-outer" @click=${this._handleToggleMenu}>
+            <div class=${classMap(classes)}>
               <div class="kuc-dropdown-selected">
                 <span class="kuc-dropdown-selected-name">
-                  <span>${index !== -1 && items[index].label}</span>
+                  <span>${text}</span>
                   <span class="icon-arrow-down"
                     ><i class="fa fa-angle-down" aria-hidden="true"></i
                   ></span>
@@ -106,16 +89,56 @@ export default class Dropdown extends Component {
               </div>
             </div>
           </div>
-          <div
-            style=${styleMap(
-              this._getItemsStyle({ isVisibleItems, isDisabled })
-            )}
-            class="kuc-list-outer"
-          >
-            ${items && renderItems(items)}
-          </div>
+          ${this._canShowMenu()
+            ? html`
+                <div class="kuc-list-outer">
+                  ${items && this._renderItems()}
+                </div>
+              `
+            : ''}
         </div>
       </div>
     `;
   }
+
+  private _renderItems() {
+    const { items, value } = this;
+    return items.map((item: ListItem) => {
+      return selectItemTemplate({
+        selected: value === item.value,
+        item,
+        onClick: this._handleSelectItem
+      });
+    });
+  }
 }
+
+const selectItemTemplate = ({
+  selected = false,
+  item,
+  onClick
+}: {
+  selected: boolean;
+  item: ListItem;
+  onClick?: Function;
+}) => {
+  const { disabled, label } = item;
+  const classes = {
+    'kuc-list-item': true,
+    'kuc-list-item-selected': selected,
+    'kuc-list-item-disable': disabled
+  };
+
+  return html`
+    <div
+      @click=${(evt: MouseEvent) => handleSelect(evt, { item, onClick })}
+      class=${classMap(classes)}
+      .disabled=${disabled}
+    >
+      <span class="kuc-icon-check"
+        ><i class="fa fa-check" aria-hidden="true"></i
+      ></span>
+      <span class="kuc-list-item-label">${label}</span>
+    </div>
+  `;
+};

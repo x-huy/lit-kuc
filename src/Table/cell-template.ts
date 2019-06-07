@@ -1,10 +1,16 @@
 import { html } from '../common';
+import { CellInterface, AccessorInterface } from './definition';
 
 const cellTemplate = ({
   rowData,
   rowIndex,
   accessor,
-  cell = cellProps => ''
+  cell
+}: {
+  rowData: object;
+  rowIndex: number;
+  accessor?: AccessorInterface;
+  cell?: CellInterface;
 }) => {
   const cellProps = { rowData, rowIndex };
 
@@ -22,7 +28,7 @@ const cellTemplate = ({
   `;
 };
 
-const getValueByAccessor = (accessor, data) => {
+const getValueByAccessor = (accessor: CellInterface, data: object) => {
   switch (typeof accessor) {
     case 'string':
       return data[accessor];

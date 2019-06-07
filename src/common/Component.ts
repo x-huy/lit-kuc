@@ -1,33 +1,39 @@
 import { render, TemplateResult } from 'lit-html';
+import { Prop } from './decorator';
 
-const lcfirst = (str: string) => {
-  const firstChar = str.charAt(0).toLowerCase();
-  return firstChar + str.substr(1);
+export type BaseProps = {
+  visible?: boolean;
+  disabled?: boolean;
+  [index: string]: any;
 };
 
-export default class Component {
-  _fragmentEl: DocumentFragment;
-  _el: HTMLElement;
-  _eventsToBind: Object;
-  state: Object;
+export default abstract class Component<Props = BaseProps> {
+  'constructor': typeof Component;
+  protected _fragmentEl: DocumentFragment;
+  protected _el: HTMLElement;
+  protected _eventsToBind: {
+    [index: string]: EventListener[];
+  };
+  protected _isReadyToRender: boolean;
+  protected _props: Props = {} as Props;
+  protected _state: object = {};
 
-  constructor(props = {}) {
-    this._fragmentEl = null;
-    this._el = null;
+  static defaultProps = { visible: true, disabled: false } as object;
+
+  @Prop visible: boolean;
+  @Prop disabled: boolean;
+
+  constructor(props: Props = {} as Props) {
+    this._fragmentEl = document.createDocumentFragment();
     this._eventsToBind = {};
-    this._bindEventsFromProps(props);
-    this.state = props;
-  }
-
-  template(props = {}): TemplateResult {
-    throw new Error('You have to implement the method "template".');
+    this._props = {
+      ...Component.defaultProps,
+      ...this.constructor.defaultProps,
+      ...props
+    } as Props;
   }
 
   get fragmentEl() {
-    if (!this._fragmentEl) {
-      this._fragmentEl = document.createDocumentFragment();
-    }
-
     return this._fragmentEl;
   }
 
@@ -39,70 +45,108 @@ export default class Component {
     return this._el;
   }
 
-  on(event: string, fn) {
+  public on(event: string, fn: EventListener) {
     if (this.el) {
       this.el.addEventListener(event, fn);
       return;
     }
 
-    this._eventsToBind[event] = this._eventsToBind[event] || [];
-    this._eventsToBind[event].push(fn);
+    this._addEventToBind(event, fn);
   }
 
-  trigger(event, data) {
+  public trigger(event: string, data: any) {
     if (!this.el) {
       return;
     }
 
-    const customEvent = new CustomEvent(event, { detail: data });
+    const customEvent = new CustomEvent(event, {
+      bubbles: true,
+      cancelable: true,
+      detail: data
+    });
     this.el.dispatchEvent(customEvent);
   }
 
-  setState(state: Object) {
-    this.state = { ...this.state, ...state };
-    this.render();
+  protected _addEventsFromProps() {
+    const eventHandlers = getEventHandlers(this._props);
+    Object.keys(eventHandlers).forEach(name => {
+      this._addEventToBind(name, eventHandlers[name]);
+    });
+  }
+
+  protected _addEventToBind(
+    event: string,
+    fn: EventListener
+  ) {
+    this._eventsToBind[event] = this._eventsToBind[event] || [];
+    this._eventsToBind[event].push(fn);
+  }
+
+  protected _bindEvents() {
+    Object.keys(this._eventsToBind).forEach(event => {
+      this._eventsToBind[event].forEach(
+        (fn: EventListener) => {
+          this.on(event, fn);
+        }
+      );
+    });
+  }
+
+  update(data: Partial<Props>): void;
+  update(key: keyof Props, value: any): void;
+
+  update(...args: any): void {
+    let data: Partial<Props> = {};
+    if (args.length === 2) {
+      const [key, value] = args;
+      data[key as keyof Props] = value;
+    } else {
+      [data] = args;
+    }
+
+    this._props = { ...this._props, ...data };
+    this._internalRender();
   }
 
   render() {
-    render(this.template(this.state), this.fragmentEl);
-
-    const isRerendered = !this.el;
-    if (!isRerendered) {
-      this._bindEvents();
-    }
+    this._isReadyToRender = true;
+    this._internalRender();
+    this._addEventsFromProps();
+    this._bindEvents();
 
     return this.fragmentEl;
   }
 
-  renderTo(container) {
-    if (container instanceof HTMLElement) {
-      container.appendChild(this.render());
-    } else if (typeof container === 'string') {
-      document.querySelector(container).appendChild(this.render());
-    }
-
-    return this;
+  protected _render(): TemplateResult | null {
+    throw new Error(
+      'The "_render()" method should be implemented by the derived class.'
+    );
   }
 
-  _bindEventsFromProps(props) {
-    Object.keys(props)
-      .filter(name => typeof props[name] === 'function')
-      .forEach(name => {
-        const matched = name.match(/(^on)([A-Z].*)/); //e.g. onClick, onActive
-        if (!matched) {
-          return;
-        }
-
-        const event = lcfirst(matched[2]);
-        this.on(event, props[name]);
-      });
-  }
-
-  _bindEvents() {
-    Object.keys(this._eventsToBind).forEach(event => {
-      this._eventsToBind[event].forEach(fn => {
-        this.on(event, fn);
-      });
-    });
+  protected _internalRender() {
+    render(this._render(), this.fragmentEl);
   }
 }
+
+const getEventHandlers = (args: {
+  [index: string]: any;
+}): { [index: string]: EventListener } => {
+  const eventNameRegex = /^on([A-Z].*)/; //e.g onClick, onChange
+  return Object.keys(args)
+    .filter(name => {
+      return (
+        typeof args[name] === 'function' && name.match(eventNameRegex) !== null
+      );
+    })
+    .reduce(
+      (
+        handlers: { [index: string]: EventListener },
+        name: string
+      ) => {
+        const eventName = name.match(eventNameRegex)[1].toLocaleLowerCase();
+        handlers[eventName] = args[name] as EventListener;
+        return handlers;
+      },
+      {}
+    );
+};

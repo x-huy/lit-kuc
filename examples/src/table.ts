@@ -1,18 +1,18 @@
 /* global $ */
 import { createSection } from './section';
 import { Table } from '../../src';
+import { CellInterface } from '../../src/Table/definition';
+declare var $: any;
 
-export default container => {
+export default (container: HTMLElement) => {
   const tableSection = createSection('Table').appendTo(container);
   const table = new Table({
     defaultRowData: {
-      x: 0,
       color: { r: 255, g: 255, b: 255 },
       startDate: new Date()
     },
     data: [
       {
-        x: 0,
         color: { r: 200, g: 230, b: 201 },
         startDate: new Date(2018, 11, 10)
       }
@@ -20,7 +20,7 @@ export default container => {
     columns: [
       {
         header: 'ID',
-        accessor: r => r.__tableRowId
+        accessor: r => (r as any).__tableRowId
       },
       {
         header: 'Color (RGB)',
@@ -37,9 +37,6 @@ export default container => {
       {
         header: 'Output',
         cell: () => outputCell()
-      },
-      {
-        actions: true
       }
     ]
   });
@@ -47,7 +44,7 @@ export default container => {
   tableSection.appendChild(table.render());
 };
 
-const rgbCell = props => ({
+const rgbCell: CellInterface = props => ({
   init({ updateRowData }) {
     const $el = $(`
     <div style="white-space: nowrap">
@@ -59,9 +56,12 @@ const rgbCell = props => ({
 
     $el
       .find('input')
-      .each((index, inputEl) => (this[inputEl.name] = $(inputEl)));
+      .each(
+        (index: number, inputEl: HTMLInputElement) =>
+          (this[inputEl.name] = $(inputEl))
+      );
 
-    $el.on('change', 'input', e => {
+    $el.on('change', 'input', () => {
       updateRowData({
         [props.fieldName]: {
           r: this.r.val(),
@@ -82,7 +82,7 @@ const rgbCell = props => ({
   }
 });
 
-const jqDateCell = props => ({
+const jqDateCell: CellInterface = props => ({
   init({ updateRowData }) {
     const $datepicker = $('<input type="text" />').datepicker();
     const { fieldName, bgColor = '#FFF9C4' } = props;
@@ -105,7 +105,7 @@ const jqDateCell = props => ({
   }
 });
 
-const outputCell = () => ({
+const outputCell: CellInterface = () => ({
   init({ rowData, rowIndex, updateRowData }) {
     const $el = $(`
     <div style="white-space: nowrap; font-size: 12px; padding: 5px">

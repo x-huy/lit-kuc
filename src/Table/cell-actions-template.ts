@@ -1,4 +1,5 @@
 import { html } from '../common';
+import { ActionInterface } from './definition';
 
 const cellActionsTemplate = ({
   data,
@@ -6,6 +7,12 @@ const cellActionsTemplate = ({
   addRow,
   removeRow,
   dispatch
+}: {
+  data: object[];
+  rowIndex: number;
+  addRow: ActionInterface;
+  removeRow: ActionInterface;
+  dispatch: (data:object) => void;
 }) => {
   return html`
     <div class="kuc-table-td action-group">

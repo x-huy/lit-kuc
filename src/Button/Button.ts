@@ -1,32 +1,34 @@
-import {Component, TemplateResult, html, classMap } from '../common';
+import { Component, Prop, BaseProps, html, classMap, } from '../common';
 import './Button.css';
 
-export interface Props {
+export type ButtonType = 'normal' | 'submit';
+export type ButtonProps = BaseProps & {
   text: string;
-  type: 'normal' | 'submit';
-  isVisible?: boolean;
-  isDisabled?: boolean;
-}
+  type?: ButtonType;
+};
 
-export default class Button extends Component {
-  template({
-    text,
-    type = 'normal',
-    isVisible = true,
-    isDisabled = false
-  }: Props): TemplateResult {
+export default class Button extends Component<ButtonProps> {
+  @Prop type: ButtonType;
+  @Prop text: string;
+
+  static defaultProps: Partial<ButtonProps> = {
+    type: 'normal'
+  }
+
+  _render() {
+    const { type, text, visible, disabled } = this;
+    if (!visible) {
+      return null;
+    }
+
     const classes = {
       'kuc-btn': true,
       submit: type === 'submit',
       normal: type === 'normal'
     };
 
-    if (isVisible === false) {
-      return null;
-    }
-
     return html`
-      <button class=${classMap(classes)} ?disabled=${isDisabled}>
+      <button class=${classMap(classes)} ?disabled=${disabled}>
         ${text}
       </button>
     `;

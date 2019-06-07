@@ -2,36 +2,31 @@ import { repeat } from 'lit-html/directives/repeat';
 import { html } from '../common';
 import cellActionsTemplate from './cell-actions-template';
 import cellTemplate from './cell-template';
+import { ColumnType, ActionInterface } from './definition';
 
 const bodyTemplate = ({
   columns,
   data,
   onChange,
+  hasActions = true,
   keyField = '__tableRowId'
+}: {
+  columns: ColumnType[];
+  data: object[];
+  onChange: Function;
+  hasActions: boolean;
+  keyField: string;
 }) => {
   return html`
     <div class="kuc-table-tbody">
       ${repeat(
         data,
-        rowData => rowData[keyField],
+        (rowData: { [index: string]: any }) => rowData[keyField],
         (rowData, rowIndex) => {
           return html`
             <div class="kuc-table-tr">
               ${columns.map((column, columnIndex) => {
-                const { cell, accessor, actions } = column;
-
-                if (actions === true) {
-                  return cellActionsTemplate({
-                    data,
-                    rowIndex,
-                    addRow,
-                    removeRow,
-                    dispatch: newState => {
-                      onChange && onChange(newState);
-                    }
-                  });
-                }
-
+                const { cell, accessor } = column;
                 return cellTemplate({
                   rowData,
                   rowIndex,
@@ -39,6 +34,17 @@ const bodyTemplate = ({
                   cell
                 });
               })}
+              ${hasActions
+                ? cellActionsTemplate({
+                    data,
+                    rowIndex,
+                    addRow,
+                    removeRow,
+                    dispatch: newState => {
+                      onChange && onChange(newState);
+                    }
+                  })
+                : ''}
             </div>
           `;
         }
@@ -47,13 +53,13 @@ const bodyTemplate = ({
   `;
 };
 
-const addRow = ({ data, rowIndex }) => {
+const addRow: ActionInterface = ({ data, rowIndex }) => {
   const insertAt = rowIndex + 1;
   const newData = [...data.slice(0, insertAt), {}, ...data.slice(insertAt)];
   return newData;
 };
 
-const removeRow = ({ data, rowIndex }) => {
+const removeRow: ActionInterface = ({ data, rowIndex }) => {
   return data.filter((item, index) => index !== rowIndex);
 };
 
